@@ -9,6 +9,8 @@ import oneWire
 import calendar
 import datetime  
 import pytz
+import socket
+import websockets
  
 desired_time_zone = pytz.timezone('Europe/Rome')
 
@@ -61,7 +63,10 @@ def status():
         # print("IRMS_L2:", L2_current)
         # print("IRMS_L3:", L3_current)
         # print("//////////////////////////////////////////////////////////////")
+        
         print(updated_data)
+        return updated_data
+
     except Exception as e:
         print(e)
 
@@ -82,27 +87,58 @@ def set_amp():
     time.sleep(1)
 
 
-while True:
-    time.sleep(0.5)
 
-    i = input("Enter command: ")
+async def client(websocket):
+    try:
+        # Ottieni l'indirizzo IP del client
+        client_ip = socket.gethostbyname(socket.gethostname())
+        print(f"ip? {client_ip}")
+        # Invia l'IP al server
+        await websocket.send(client_ip)
+        print(f"Inviato IP al server: {client_ip}")
 
-    if i == "start":
-        start()
-    elif i == "stop":
-        stop()
-    elif i == "status":
-        while True:
-            print("Status update... (Press Enter to stop)")
-            status()
-            # time.sleep(0.2)
+        # Ricevi il messaggio dal server
+        response = await websocket.recv()
+        print(f"Ricevuto messaggio dal server: {response}")
 
-        # Controlla se c'è un input pronto sulla tastiera
-            if select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], []):
-                key = sys.stdin.read(1)  # Leggi il tasto premuto
-                break  # Esci dal ciclo se è stato premuto un tasto
-    elif i == "set max amp":
-        set_amp()
+        # Esegui l'azione richiesta dal server
+        if response == "start":
+            start()
+            print("Wallbox start")
+            await websocket.send("Wallbox start")
+
+        elif response == "stop":
+            stop()
+            print("Wallbox stop")
+            await websocket.send("Wallbox stop")
+
+        elif response == "status":
+            print("Status update...")
+            await websocket.send(status())
+
+        elif response == "set max amp":
+            set_amp()
+
+        # Chiamata ricorsiva per mantenere la connessione attiva
+        await client(websocket)
+
+    except Exception as e:
+        print(f"Errore durante la connessione al server: {e}")
+        # Gestisci eventuali errori di connessione ricreandola
+        await asyncio.sleep(5)  # Attendi 5 secondi prima di tentare di riconnettersi
+        print("Riprova a connetterti al server...")
+        async with websockets.connect("ws://192.168.1.16:8765") as new_websocket:
+            await client(new_websocket)  # Chiamata ricorsiva per riconnettersi e mantenere la connessione attiva
+
+async def connect_to_server():
+    async with websockets.connect("ws://192.168.1.16:8765") as websocket:
+        await client(websocket)
+
+# Utilizziamo il metodo run_until_complete per eseguire la funzione principale async
+loop = asyncio.get_event_loop()
+loop.run_until_complete(connect_to_server())
+
+
         
         
 
