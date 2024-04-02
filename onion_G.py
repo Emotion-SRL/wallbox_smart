@@ -12,6 +12,7 @@ import pytz
 import socket
 import websockets
 import os
+import subprocess
 
  
 desired_time_zone = pytz.timezone('Europe/Rome')
@@ -28,7 +29,31 @@ ser = serial.Serial('/dev/ttyS1', 9600, timeout=1)
 with open("serial_number.txt", "r") as file:
 # Leggo la prima riga del file
     serialNumber = file.readline()
-    
+
+
+def get_mac_address(interface):
+    try:
+        # Esegui il comando ifconfig per ottenere le informazioni sull'interfaccia specificata
+        output = subprocess.check_output(['ifconfig', interface]).decode('utf-8')
+        # Cerca la riga che contiene il MAC address (HWaddr)
+        mac_line = [line for line in output.split('\n') if 'HWaddr' in line][0]
+        # Estrai il MAC address dalla riga
+        mac_address = mac_line.split('HWaddr')[1].strip()
+        return mac_address
+    except:
+        return None
+
+# Specifica l'interfaccia di rete di interesse (ad esempio, 'eth0', 'wlan0')
+
+
+interface = 'ra0'
+
+mac_address = get_mac_address(interface)
+if mac_address:
+    print("MAC address di {} : {}".format(interface, mac_address))
+else:
+    print("Impossibile ottenere il MAC address per l'interfaccia {}".format(interface))
+
 
 def status():
 
@@ -48,7 +73,7 @@ def status():
             return -1
 
     # get the address of the temperature sensor
-    #it should be the only device connected in this experiment    
+    # it should be the only device connected in this experiment    
         sensorAddress = oneWire.scanOneAddress()
 
     # instantiate the temperature sensor object
@@ -56,7 +81,7 @@ def status():
         if not sensor.ready:
             print("Sensor was not set up correctly. Please make sure that your sensor is firmly connected to the GPIO specified above and try again.")
             return -1
-       
+      
         sensor_value = sensor.readValue()
         json_data = json.loads(data)
         json_data["Temp"] = f"{'%.2f' % sensor_value} C"
@@ -65,12 +90,12 @@ def status():
         # json_data = current_date
         L1_current = json_data["IRMS_L1"]
         updated_data = json.dumps(json_data, indent=2)
-        
+
         # print("IRMS_L1:", L1_current)
         # print("IRMS_L2:", L2_current)
         # print("IRMS_L3:", L3_current)
         # print("//////////////////////////////////////////////////////////////")
-        
+
         print(updated_data)
         return updated_data
 
@@ -82,9 +107,11 @@ def start():
     command = 'start'
     ser.write(command.encode())
 
+
 def stop():
     command = 'stop'
     ser.write(command.encode())
+
 
 def set_amp(number):
 
@@ -92,7 +119,6 @@ def set_amp(number):
     msg = "max amp "+ amp
     ser.write(msg.encode())
     time.sleep(1)
-
 
 
 async def client(websocket):

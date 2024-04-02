@@ -4,6 +4,7 @@ import websockets
 connected_clients = {}
 status_requested = {}
 
+
 async def server(websocket, path):
     try:
         # Ricevere l'indirizzo IP del client
