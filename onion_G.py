@@ -43,16 +43,7 @@ def get_mac_address(interface):
     except:
         return None
 
-# Specifica l'interfaccia di rete di interesse (ad esempio, 'eth0', 'wlan0')
 
-
-interface = 'ra0'
-
-mac_address = get_mac_address(interface)
-if mac_address:
-    print("MAC address di {} : {}".format(interface, mac_address))
-else:
-    print("Impossibile ottenere il MAC address per l'interfaccia {}".format(interface))
 
 
 def status():
@@ -73,7 +64,7 @@ def status():
             return -1
 
     # get the address of the temperature sensor
-    # it should be the only device connected in this experiment    
+    #it should be the only device connected in this experiment    
         sensorAddress = oneWire.scanOneAddress()
 
     # instantiate the temperature sensor object
@@ -81,21 +72,20 @@ def status():
         if not sensor.ready:
             print("Sensor was not set up correctly. Please make sure that your sensor is firmly connected to the GPIO specified above and try again.")
             return -1
-      
+       
         sensor_value = sensor.readValue()
         json_data = json.loads(data)
         json_data["Temp"] = f"{'%.2f' % sensor_value} C"
         time.sleep(pollingInterval)
         json_data["Time"] = str_date_time
         # json_data = current_date
-        L1_current = json_data["IRMS_L1"]
         updated_data = json.dumps(json_data, indent=2)
-
+        
         # print("IRMS_L1:", L1_current)
         # print("IRMS_L2:", L2_current)
         # print("IRMS_L3:", L3_current)
         # print("//////////////////////////////////////////////////////////////")
-
+        
         print(updated_data)
         return updated_data
 
@@ -107,11 +97,9 @@ def start():
     command = 'start'
     ser.write(command.encode())
 
-
 def stop():
     command = 'stop'
     ser.write(command.encode())
-
 
 def set_amp(number):
 
@@ -121,20 +109,28 @@ def set_amp(number):
     time.sleep(1)
 
 
+
 async def client(websocket):
     try:
+        mcu_data = status()
+        mcu_data_json = json.loads(mcu_data)
+        max_amps=int(float(mcu_data_json["amps"]) * 100)
+        ev_state = mcu_data_json["State"]
         # Ottieni l'indirizzo IP del client
         # client_ip = socket.gethostbyname(socket.gethostname())
         client_ip = os.popen("ifconfig apcli0 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'").read().strip()
         print(f"ip? {client_ip}")
         # Invia l'IP al server
-        id_data = {
-            "Client IP": client_ip,
-            "SN": serialNumber
-        }
-        identification = json.dumps(id_data)        
+        mac_address = get_mac_address("ra0")
+        id_data = {}
+        id_data["serial_number"] = serialNumber
+        id_data["password"] = mac_address
+        id_data["ip_address"] = client_ip
+        id_data["max_ampere"] = max_amps
+        id_data["status"] = ev_state
+        identification = json.dumps(id_data, indent =2)        
         await websocket.send(identification)
-        print(f"Inviato identification: {identification}")
+        print(f"boot_notification: {identification}")
 
         # Ricevi il messaggio dal server
         response = await websocket.recv()
@@ -168,11 +164,11 @@ async def client(websocket):
         # Gestisci eventuali errori di connessione ricreandola
         await asyncio.sleep(5)  # Attendi 5 secondi prima di tentare di riconnettersi
         print("Riprova a connetterti al server...")
-        async with websockets.connect("ws://192.168.1.16:8765") as new_websocket:
+        async with websockets.connect("ws://192.168.1.44:8765") as new_websocket:
             await client(new_websocket)  # Chiamata ricorsiva per riconnettersi e mantenere la connessione attiva
 
 async def connect_to_server():
-    async with websockets.connect("ws://192.168.1.16:8765") as websocket:
+    async with websockets.connect("ws://192.168.1.44:8765") as websocket:
         await client(websocket)
 
 # Utilizziamo il metodo run_until_complete per eseguire la funzione principale async
