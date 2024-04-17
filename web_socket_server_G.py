@@ -26,8 +26,13 @@ async def server(websocket, path):
         async for message in websocket:
             print(f"Ricevuto messaggio dal client {client_ip}: {message}")
              # Chiamata all'API per salvare i dati nel database
-            await save_boot_notification_to_db(message)
 
+            if "ip_address" in message:
+                await save_boot_notification_to_db(message)
+
+            else:
+                await save_realtime_notification_to_db(message)
+        
     except websockets.exceptions.ConnectionClosedError:
         print(f"Connessione chiusa dal client {client_ip}")
 
@@ -36,7 +41,7 @@ async def send_status(client_ip):
     # Verifica se il client è connesso
     if client_ip in connected_clients:
         # Invia il comando "status" al client specificato
-        await connected_clients[client_ip].send("status")
+        await connected_clients[client_ip].send("set max amp 12")
     else:
         print(f"Client {client_ip} non trovato.")
 
@@ -46,7 +51,7 @@ async def save_boot_notification_to_db(message):
     api_url = "https://emotion-test.eu/api/wallbox/"
     try:
         # Effettua la richiesta PATCH all'API
-        #message_json = json.dumps(message, indent = 2)
+        # message_json = json.dumps(message, indent = 2)
         print(message)
 
         response = requests.patch(api_url, json=json.loads(message))
@@ -54,7 +59,27 @@ async def save_boot_notification_to_db(message):
         print(response.json())
         # Controlla lo stato della risposta
         if response.status_code == 200:
-            print("Dati salvati con successo nel database.")
+            print("Dati salvati boot notification con successo nel database.")
+        else:
+            print("Si è verificato un errore durante il salvataggio dei dati nel database.") 
+    except Exception as e:
+        print(f"Errore durante la richiesta all'API: {e}")
+
+
+async def save_realtime_notification_to_db(message):
+    # URL dell'API per salvare i dati nel database
+    api_url = "https://emotion-test.eu/api/wallbox/realtime/"
+    try:
+        # Effettua la richiesta PATCH all'API
+        # message_json = json.dumps(message, indent = 2)
+        print(message)
+
+        response = requests.post(api_url, json=json.loads(message))
+        print(response)
+        print(response.json())
+        # Controlla lo stato della risposta
+        if response.status_code == 201:
+            print("Dati realtime notification salvati con successo nel database.")
         else:
             print("Si è verificato un errore durante il salvataggio dei dati nel database.") 
     except Exception as e:

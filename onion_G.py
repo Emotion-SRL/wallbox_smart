@@ -85,8 +85,6 @@ def status():
         # print("IRMS_L2:", L2_current)
         # print("IRMS_L3:", L3_current)
         # print("//////////////////////////////////////////////////////////////")
-        
-        print(updated_data)
         return updated_data
 
     except Exception as e:
@@ -108,13 +106,34 @@ def set_amp(number):
     ser.write(msg.encode())
     time.sleep(1)
 
+async def send_realtime_data(websocket, mac_address, serialNumber):
+    while True:
+        mcu_data = status()
+        mcu_data_json = json.loads(mcu_data)
+        ampere = int(float(mcu_data_json["IRMS_L1"]) * 100)
+        ev_state = mcu_data_json["State"]
+        realtime_data = {
+            "serial_number": serialNumber,
+            "password": mac_address,
+            "ampere": ampere,
+            "temperature": mcu_data_json["Temp"],
+            "status": ev_state
+        }
+        realtime_json = json.dumps(realtime_data, indent=2)
+        if ampere >= 600:
+            await websocket.send(realtime_json)
+            print(f"realtime_notification: {realtime_json}")
+        await asyncio.sleep(58)
+
 
 
 async def client(websocket):
     try:
         mcu_data = status()
         mcu_data_json = json.loads(mcu_data)
-        max_amps=int(float(mcu_data_json["amps"]) * 100)
+        max_amps=int(float(mcu_data_json["Max amps"]) * 100)
+        ampere = int(float(mcu_data_json["IRMS_L1"]) * 100)
+        print(f"ampere {ampere}")
         ev_state = mcu_data_json["State"]
         # Ottieni l'indirizzo IP del client
         # client_ip = socket.gethostbyname(socket.gethostname())
@@ -132,30 +151,31 @@ async def client(websocket):
         await websocket.send(identification)
         print(f"boot_notification: {identification}")
 
+        
+         # Avvia il task per l'invio dei dati in tempo reale
+        asyncio.ensure_future(send_realtime_data(websocket, mac_address, serialNumber))
+
         # Ricevi il messaggio dal server
         response = await websocket.recv()
         print(f"Ricevuto messaggio dal server: {response}")
-
         # Esegui l'azione richiesta dal server
         if response == "start":
             start()
             print("Wallbox start")
             await websocket.send("Wallbox start")
-
         elif response == "stop":
             stop()
             print("Wallbox stop")
             await websocket.send("Wallbox stop")
-
         elif response == "status":
             print("Status update...")
             await websocket.send(status())
-
         elif response.startswith("set max amp"):
             parts = response.split()
             number = parts[-1] 
             set_amp(number)
-
+        
+        
         # Chiamata ricorsiva per mantenere la connessione attiva
         await client(websocket)
 
