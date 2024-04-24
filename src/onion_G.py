@@ -1,20 +1,20 @@
-import serial
-import json
 import asyncio
-import time
-import select
-import sys
-from temperatureSensor import TemperatureSensor
-import oneWire
 import calendar
-import datetime  
-import pytz
-import socket
-import websockets
+import datetime
+import json
 import os
+import select
+import socket
 import subprocess
+import sys
+import time
 
- 
+import oneWire
+import pytz
+import serial
+import websockets
+from temperatureSensor import TemperatureSensor
+
 desired_time_zone = pytz.timezone('Europe/Rome')
 
 
@@ -26,7 +26,7 @@ pollingInterval = 1 # seconds
 ser = serial.Serial('/dev/ttyS1', 9600, timeout=1)
 
 # Apro il file in modalità lettura
-with open("serial_number.txt", "r") as file:
+with open("/root/serial_number.txt", "r") as file:
 # Leggo la prima riga del file
     serialNumber = file.readline()
 
@@ -39,6 +39,7 @@ def get_mac_address(interface):
         mac_line = [line for line in output.split('\n') if 'HWaddr' in line][0]
         # Estrai il MAC address dalla riga
         mac_address = mac_line.split('HWaddr')[1].strip()
+        print("mac_address" + mac_address)
         return mac_address
     except:
         return None
@@ -53,10 +54,11 @@ def status():
     while ser.in_waiting == 0:
         pass
     data = ser.readline().decode().strip()
+    print("porco dio il json che mi arriva è fatto così:  "+data)
     try:
-
         current_time = datetime.datetime.now(tz=desired_time_zone)
         str_date_time = current_time.strftime("%d-%m-%Y, %H:%M:%S")
+        print(str_date_time)
         # check and print the temperature
 
         if not oneWire.setupOneWire(str(oneWireGpio)):
@@ -85,6 +87,7 @@ def status():
         # print("IRMS_L2:", L2_current)
         # print("IRMS_L3:", L3_current)
         # print("//////////////////////////////////////////////////////////////")
+        print(updated_data)
         return updated_data
 
     except Exception as e:
@@ -109,6 +112,7 @@ def set_amp(number):
 async def send_realtime_data(websocket, mac_address, serialNumber):
     while True:
         mcu_data = status()
+        print(mcu_data)
         mcu_data_json = json.loads(mcu_data)
         ampere = int(float(mcu_data_json["IRMS_L1"]) * 100)
         ev_state = mcu_data_json["State"]
@@ -130,15 +134,19 @@ async def send_realtime_data(websocket, mac_address, serialNumber):
 async def client(websocket):
     try:
         mcu_data = status()
+        if mcu_data:
+            mcu_data_json = json.loads(mcu_data)
+            # il resto del tuo codice
+        else:
+            print("Errore: status() ha restituito None o una stringa vuota")
         mcu_data_json = json.loads(mcu_data)
-        max_amps=int(float(mcu_data_json["Max amps"]) * 100)
+        max_amps=int(float(mcu_data_json["Max_amps"]) * 100)
         ampere = int(float(mcu_data_json["IRMS_L1"]) * 100)
         print(f"ampere {ampere}")
         ev_state = mcu_data_json["State"]
         # Ottieni l'indirizzo IP del client
         # client_ip = socket.gethostbyname(socket.gethostname())
         client_ip = os.popen("ifconfig apcli0 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'").read().strip()
-        print(f"ip? {client_ip}")
         # Invia l'IP al server
         mac_address = get_mac_address("ra0")
         id_data = {}
@@ -150,8 +158,6 @@ async def client(websocket):
         identification = json.dumps(id_data, indent =2)        
         await websocket.send(identification)
         print(f"boot_notification: {identification}")
-
-        
          # Avvia il task per l'invio dei dati in tempo reale
         asyncio.ensure_future(send_realtime_data(websocket, mac_address, serialNumber))
 
@@ -184,11 +190,11 @@ async def client(websocket):
         # Gestisci eventuali errori di connessione ricreandola
         await asyncio.sleep(5)  # Attendi 5 secondi prima di tentare di riconnettersi
         print("Riprova a connetterti al server...")
-        async with websockets.connect("ws://192.168.1.44:8765") as new_websocket:
+        async with websockets.connect("wss://emotion-test.eu/wallbox") as new_websocket:
             await client(new_websocket)  # Chiamata ricorsiva per riconnettersi e mantenere la connessione attiva
 
 async def connect_to_server():
-    async with websockets.connect("ws://192.168.1.44:8765") as websocket:
+    async with websockets.connect("wss://emotion-test.eu/wallbox") as websocket:
         await client(websocket)
 
 # Utilizziamo il metodo run_until_complete per eseguire la funzione principale async
