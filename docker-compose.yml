@@ -1,0 +1,7 @@
+version: "3.8"
+
+services:
+  wallbox-manager:
+    image: emotionsrl/wallbox-manager:test
+    environment:
+      API_URL: wss://emotion-test.eu/api
