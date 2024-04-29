@@ -21,7 +21,7 @@ async def django(websocket, path):
             print(f"Ricevuto messaggio da django sulla porta 15001: {message}")
             # Qui puoi gestire il messaggio JSON come preferisci
             message_data = json.loads(message)
-            target_ip = message_data.get('ip_address', "")
+            target_ip = message_data.get('serial_number', "")
             connection = connected_clients.get(target_ip, False)
             if connection:
                 amps = message_data['max_ampere']//100
@@ -36,35 +36,31 @@ async def django(websocket, path):
 
 async def server(websocket, path):
     try:
-        # Ricevere l'indirizzo IP del client
-        client_ip = websocket.remote_address[0]
-        print(f"Client connesso dall'indirizzo IP: {client_ip}")
-        # Memorizza l'indirizzo IP pubblico del client
-        connected_clients[client_ip] = websocket
-        await websocket.send("Connesso al server")
-        # Se lo stato non è stato richiesto per questo client, invialo
-        if client_ip not in status_requested:
-            await send_status(client_ip)
-            # Segna che lo stato è stato richiesto per evitare di inviarlo nuovamente
-            status_requested[client_ip] = True
-        # Attendere ulteriori messaggi dal client
+        # # Ricevere l'indirizzo IP del client
+        # client_ip = websocket.remote_address[0]
+        # print(f"Client connesso dall'indirizzo IP: {client_ip}")
+        # # Memorizza l'indirizzo IP pubblico del client
+        # connected_clients[client_ip] = websocket
+        # await websocket.send("Connesso al server")
+        # # Se lo stato non è stato richiesto per questo client, invialo
+        # if client_ip not in status_requested:
+        #     await send_status(client_ip)
+        #     # Segna che lo stato è stato richiesto per evitare di inviarlo nuovamente
+        #     status_requested[client_ip] = True
+        # # Attendere ulteriori messaggi dal client
         async for message in websocket:
             message = json.loads(message)
-            print(f"Ricevuto messaggio dal client {client_ip}: {message}")
+            print(connected_clients)
             # Chiamata all'API per salvare i dati nel database
             if "ip_address" in message:
                 connected_clients[message["serial_number"]] = websocket
                 await save_boot_notification_to_db(message)
-
             else:
                 await save_realtime_notification_to_db(message)
-
     except websockets.exceptions.ConnectionClosed:
         for serial_number, client in connected_clients.items():
             if client == websocket:
                 connected_clients.pop(serial_number, None)
-
-        print(f"Connessione chiusa dal client {client_ip}")
 
 
 async def send_status(client_ip):
@@ -83,7 +79,7 @@ async def save_boot_notification_to_db(message):
     try:
         # Effettua la richiesta PATCH all'API
         # message_json = json.dumps(message, indent = 2)
-        response = requests.patch(api_url, json=json.loads(message))
+        response = requests.patch(api_url, json=message)
         print(response)
         print(response.json())
         # Controlla lo stato della risposta
@@ -103,7 +99,7 @@ async def save_realtime_notification_to_db(message):
     try:
         # Effettua la richiesta PATCH all'API
         # message_json = json.dumps(message, indent = 2)
-        response = requests.post(api_url, json=json.loads(message))
+        response = requests.post(api_url, json=message)
         print(response)
         print(response.json())
         # Controlla lo stato della risposta
