@@ -49,6 +49,7 @@ async def server(websocket, path):
             status_requested[client_ip] = True
         # Attendere ulteriori messaggi dal client
         async for message in websocket:
+            message = json.loads(message)
             print(f"Ricevuto messaggio dal client {client_ip}: {message}")
             # Chiamata all'API per salvare i dati nel database
             if "ip_address" in message:
