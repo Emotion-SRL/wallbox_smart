@@ -24,7 +24,7 @@ async def django(websocket, path):
             target_ip = message_data.get('serial_number', "")
             connection = connected_clients.get(target_ip, False)
             if connection:
-                amps = message_data['max_ampere']//100
+                amps = round(float(message_data['max_ampere']), 2)
                 print(f"Invio messaggio al client con IP {target_ip}")
                 await connection.send("set max amps " + str(amps))
             else:
