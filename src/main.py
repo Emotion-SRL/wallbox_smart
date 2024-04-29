@@ -58,9 +58,11 @@ async def server(websocket, path):
             else:
                 await save_realtime_notification_to_db(message)
     except websockets.exceptions.ConnectionClosed:
+        serial = ""
         for serial_number, client in connected_clients.items():
             if client == websocket:
-                connected_clients.pop(serial_number, None)
+                serial = serial_number
+        connected_clients.pop(serial, None)
 
 
 async def send_status(client_ip):

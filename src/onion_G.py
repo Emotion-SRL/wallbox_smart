@@ -180,6 +180,7 @@ async def client(websocket):
                 parts = response.split()
                 number = parts[-1]
                 set_amp(number)
+                await websocket.send(identification)
 
     except Exception as e:
         print(f"Errore durante la connessione al server: {e}")
