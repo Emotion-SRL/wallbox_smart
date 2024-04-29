@@ -13,22 +13,22 @@ async def django(websocket, path):
     try:
         # Ricevere l'indirizzo IP del client
         client_ip = websocket.remote_address[0]
-        print(f"Client connesso dall'indirizzo IP: {client_ip} sulla porta 15001")
+        print("connessione a django sulla porta 15001")
         # Memorizza l'indirizzo IP pubblico del client
-        connected_clients[client_ip] = websocket
+        # connected_clients[client_ip] = websocket
         # Attendere ulteriori messaggi dal client
         async for message in websocket:
-            print(f"Ricevuto messaggio dal client {client_ip} sulla porta 15001: {message}")
+            print(f"Ricevuto messaggio da django sulla porta 15001: {message}")
             # Qui puoi gestire il messaggio JSON come preferisci
             message_data = json.loads(message)
-            if 'ip' in message_data:
-                target_ip = message_data['ip']
-                if target_ip in connected_clients:
-                    print(f"Invio messaggio al client con IP {target_ip}")
-                    # target_websocket = connected_clients[target_ip]
-                    # await target_websocket.send(json.dumps(message_data))
-                else:
-                    print(f"Client con IP {target_ip} non trovato.")
+            target_ip = message_data.get('ip_address', "")
+            connection = connected_clients.get(target_ip, False)
+            if connection:
+                amps = message_data['max_ampere']//100
+                print(f"Invio messaggio al client con IP {target_ip}")
+                await connection.send("set max amps " + str(amps))
+            else:
+                print(f"Client con IP {target_ip} non trovato.")
 
     except websockets.exceptions.ConnectionClosedError:
         print(f"Connessione chiusa dal client {client_ip} sulla porta 15001")
@@ -41,6 +41,7 @@ async def server(websocket, path):
         print(f"Client connesso dall'indirizzo IP: {client_ip}")
         # Memorizza l'indirizzo IP pubblico del client
         connected_clients[client_ip] = websocket
+        await websocket.send("Connesso al server")
         # Se lo stato non è stato richiesto per questo client, invialo
         if client_ip not in status_requested:
             await send_status(client_ip)
@@ -51,12 +52,17 @@ async def server(websocket, path):
             print(f"Ricevuto messaggio dal client {client_ip}: {message}")
             # Chiamata all'API per salvare i dati nel database
             if "ip_address" in message:
+                connected_clients[message["serial_number"]] = websocket
                 await save_boot_notification_to_db(message)
 
             else:
                 await save_realtime_notification_to_db(message)
 
-    except websockets.exceptions.ConnectionClosedError:
+    except websockets.exceptions.ConnectionClosed:
+        for serial_number, client in connected_clients.items():
+            if client == websocket:
+                connected_clients.pop(serial_number, None)
+
         print(f"Connessione chiusa dal client {client_ip}")
 
 
@@ -108,9 +114,9 @@ async def save_realtime_notification_to_db(message):
     except Exception as e:
         print(f"Errore durante la richiesta all'API: {e}")
 
-start_server = websockets.serve(server, "0.0.0.0", 8765)
 start_django = websockets.serve(django, "0.0.0.0", 15001)
+start_server = websockets.serve(server, "0.0.0.0", 8765)
 
-
+asyncio.get_event_loop().run_until_complete(start_django)
 asyncio.get_event_loop().run_until_complete(start_server)
 asyncio.get_event_loop().run_forever()

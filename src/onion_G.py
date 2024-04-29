@@ -162,33 +162,29 @@ async def client(websocket):
         asyncio.ensure_future(send_realtime_data(websocket, mac_address, serialNumber))
 
         # Ricevi il messaggio dal server
-        response = await websocket.recv()
-        print(f"Ricevuto messaggio dal server: {response}")
-        # Esegui l'azione richiesta dal server
-        if response == "start":
-            start()
-            print("Wallbox start")
-            await websocket.send("Wallbox start")
-        elif response == "stop":
-            stop()
-            print("Wallbox stop")
-            await websocket.send("Wallbox stop")
-        elif response == "status":
-            print("Status update...")
-            await websocket.send(status())
-        elif response.startswith("set max amp"):
-            parts = response.split()
-            number = parts[-1] 
-            set_amp(number)
-        
-        
-        # Chiamata ricorsiva per mantenere la connessione attiva
-        await client(websocket)
+        async for response in websocket:
+            print(f"Ricevuto messaggio dal server: {response}")
+            # Esegui l'azione richiesta dal server
+            if response == "start":
+                start()
+                print("Wallbox start")
+                await websocket.send("Wallbox start")
+            elif response == "stop":
+                stop()
+                print("Wallbox stop")
+                await websocket.send("Wallbox stop")
+            elif response == "status":
+                print("Status update...")
+                await websocket.send(status())
+            elif response.startswith("set max amp"):
+                parts = response.split()
+                number = parts[-1]
+                set_amp(number)
 
     except Exception as e:
         print(f"Errore durante la connessione al server: {e}")
         # Gestisci eventuali errori di connessione ricreandola
-        await asyncio.sleep(5)  # Attendi 5 secondi prima di tentare di riconnettersi
+        await asyncio.sleep(10)  # Attendi 5 secondi prima di tentare di riconnettersi
         print("Riprova a connetterti al server...")
         async with websockets.connect("wss://emotion-test.eu/wallbox") as new_websocket:
             await client(new_websocket)  # Chiamata ricorsiva per riconnettersi e mantenere la connessione attiva
