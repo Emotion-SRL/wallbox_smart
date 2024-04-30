@@ -12,7 +12,7 @@ status_requested = {}
 async def django(websocket, path):
     try:
         # Ricevere l'indirizzo IP del client
-        client_ip = websocket.remote_address[0]
+        client_ip = websocket
         print("connessione a django sulla porta 15001")
         # Memorizza l'indirizzo IP pubblico del client
         # connected_clients[client_ip] = websocket
