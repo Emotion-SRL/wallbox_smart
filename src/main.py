@@ -36,18 +36,6 @@ async def django(websocket, path):
 
 async def server(websocket, path):
     try:
-        # # Ricevere l'indirizzo IP del client
-        # client_ip = websocket.remote_address[0]
-        # print(f"Client connesso dall'indirizzo IP: {client_ip}")
-        # # Memorizza l'indirizzo IP pubblico del client
-        # connected_clients[client_ip] = websocket
-        # await websocket.send("Connesso al server")
-        # # Se lo stato non è stato richiesto per questo client, invialo
-        # if client_ip not in status_requested:
-        #     await send_status(client_ip)
-        #     # Segna che lo stato è stato richiesto per evitare di inviarlo nuovamente
-        #     status_requested[client_ip] = True
-        # # Attendere ulteriori messaggi dal client
         async for message in websocket:
             message = json.loads(message)
             print(connected_clients)
@@ -69,7 +57,7 @@ async def send_status(client_ip):
     # Verifica se il client è connesso
     if client_ip in connected_clients:
         # Invia il comando "status" al client specificato
-        print("Invio comando status al client")
+        print("Invio comando status al client {client_ip}")
     else:
         print(f"Client {client_ip} non trovato.")
 
@@ -102,7 +90,6 @@ async def save_realtime_notification_to_db(message):
         # Effettua la richiesta PATCH all'API
         # message_json = json.dumps(message, indent = 2)
         response = requests.post(api_url, json=message)
-        print(response)
         print(response.json())
         # Controlla lo stato della risposta
         if response.status_code == 201:
