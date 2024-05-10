@@ -29,7 +29,7 @@ async def django(websocket, path):
                 print(f"Invio messaggio al client con IP {target_ip}")
                 await connection.send("set max amps " + str(amps))
             else:
-                print(f"Client con IP {target_ip} non trovato.")
+                print(f"Client con serial number {target_ip} non trovato.")
 
     except websockets.exceptions.ConnectionClosedError:
         print(f"Connessione chiusa dal client {client_ip} sulla porta 15001")
@@ -53,9 +53,10 @@ async def server(websocket, path):
             if client == websocket:
                 serial = serial_number
         message = {}
-        message["serial_number"] = serial["serial_number"]
+        print(f"il serial  {serial} ")
+        message["serial_number"] = serial.get('serial_number')
         message["status"] = "OFFLINE"
-        message["password"] = serial["password"]
+        message["password"] = serial.get('password')
         await save_boot_notification_to_db(message)
         connected_clients.pop(serial, None)
 
