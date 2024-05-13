@@ -24,8 +24,7 @@ async def django(websocket, path):
             target_ip = message_data.get('serial_number', "")
             connection = connected_clients.get(target_ip, False)
             if connection:
-                amps = int(str(round(float(message_data['max_ampere']), 2))[:2])
-                print("amps: ", amps)
+                amps = message_data['max_ampere']
                 print(f"Invio messaggio al client con IP {target_ip}")
                 await connection.send("set max amps " + str(amps))
             else:
@@ -55,9 +54,9 @@ async def server(websocket, path):
         message = {}
         print(f"il serial  {serial} ")
         print(f"il client  {client} ")
-        message["serial_number"] = client.get('serial_number')
+        message["serial_number"] = client[serial].get('serial_number')
         message["status"] = "OFFLINE"
-        message["password"] = client.get('password')
+        message["password"] = client[serial].get('password')
         await save_boot_notification_to_db(message)
         connected_clients.pop(serial, None)
 
