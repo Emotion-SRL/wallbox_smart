@@ -54,9 +54,10 @@ async def server(websocket, path):
                 serial = serial_number
         message = {}
         print(f"il serial  {serial} ")
-        message["serial_number"] = serial.get('serial_number')
+        print(f"il client  {client} ")
+        message["serial_number"] = client.get('serial_number')
         message["status"] = "OFFLINE"
-        message["password"] = serial.get('password')
+        message["password"] = client.get('password')
         await save_boot_notification_to_db(message)
         connected_clients.pop(serial, None)
 
