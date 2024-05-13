@@ -1,4 +1,4 @@
-50
+#include <EEPROM.h>
 #include "Evcc.h"
 
 // Define Digital Pin
@@ -18,9 +18,9 @@ bool isPluggedIn = true;
 bool reg_toggle = false;
 bool line_splitted = true;
 
-int max_amps = 32;
-int min_amps = 6;
-int hysteresis = 5;
+int max_amps = 0; //Ampere * 100
+int min_amps = 600; //Ampere * 100
+int hysteresis = 500; //Ampere * 100
 
 unsigned long EXT_reading_interval = 300;
 unsigned long loop_interval = 50;
@@ -40,6 +40,13 @@ void setup()
 
   Serial1.begin(9600);
   // Serial.begin(9600);
+   if (max_amps == 0)
+     {
+      max_amps = 3200;
+     }else{
+      max_amps = EEPROM.read(E_max_amp_address);
+     }
+      
   evcc.UpdateMaxAmps(max_amps);
   evcc.Timer_init();
   evcc.AC_off(); // Utilizzo del metodo off() della classe Plug
@@ -75,6 +82,10 @@ void loop()
       {
         max_amps = command.substring(7).toInt();
         evcc.UpdateMaxAmps(max_amps);
+          if (max_amps != EEPROM.read(E_max_amp_address))
+            {
+              EEPROM.write(E_max_amp_address, max_amps);
+            }
       }
     }
 
@@ -94,11 +105,34 @@ void loop()
     previousMillis2 = currentMillis; // Aggiorna il valore di previousMillis
 
     reg_toggle = evcc.Smart_reg(min_amps, line_splitted, hysteresis);
-
-    // Serial.println(max_amps);
-    // amps = evcc.Smart_reg(max_amps);
-    // evcc.UpdateDuty(int(amps/0.6)); //amps
-    // Serial.print("amps: "); Serial.print(amps);
-    // Serial.print("      max_amps: "); Serial.println(max_amps);
   }
 }
+
+/* 
+ *  DA IMPLEMENTARE QUANDO AVREMO LA SCHEDA FINALE CON I MICRO SWITCH
+ 
+
+int AmpsSwitchReading() {
+  // Leggi lo stato dei pin dei DIP switch
+  int sw1 = !digitalRead(SW1);
+  int sw2 = !digitalRead(SW2);
+  int sw3 = !digitalRead(SW3);
+  int sw4 = !digitalRead(SW4);
+
+  // Calcola il valore binario combinato dei DIP switch
+  int binaryValue = sw1 * 8 + sw2 * 4 + sw3 * 2 + sw4;
+
+  if (binaryValue == 14 || binaryValue == 15) {
+    return 32; // Restituisci sempre 32A per queste combinazioni
+  } else {
+    // Restituisci il valore di corrente corrispondente
+    return currentValues[binaryValue];
+  }
+}
+
+bool lsSwitchReading() {
+  // Leggi lo stato del pin dello switch e inverti la logica
+  return digitalRead(LS_EN);
+}
+
+*/
