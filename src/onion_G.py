@@ -187,11 +187,11 @@ async def client(websocket):
         # Gestisci eventuali errori di connessione ricreandola
         await asyncio.sleep(10)  # Attendi 5 secondi prima di tentare di riconnettersi
         print("Riprova a connetterti al server...")
-        async with websockets.connect("wss://emotion-test.eu/wallbox") as new_websocket:
+        async with websockets.connect("wss://emotion-projects.eu/wallbox") as new_websocket:
             await client(new_websocket)  # Chiamata ricorsiva per riconnettersi e mantenere la connessione attiva
 
 async def connect_to_server():
-    async with websockets.connect("wss://emotion-test.eu/wallbox") as websocket:
+    async with websockets.connect("wss://emotion-projects.eu/wallbox") as websocket:
         await client(websocket)
 
 # Utilizziamo il metodo run_until_complete per eseguire la funzione principale async

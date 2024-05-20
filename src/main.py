@@ -77,7 +77,7 @@ async def send_status(client_ip):
 async def save_boot_notification_to_db(message):
     # URL dell'API per salvare i dati nel database
     api_url = os.environ.get(
-        'API_URL', "https://emotion-test.eu/api") + "/wallbox/"
+        'API_URL', "https://emotion-projects.eu/api") + "/wallbox/"
     try:
         # Effettua la richiesta PATCH all'API
         # message_json = json.dumps(message, indent = 2)
@@ -97,7 +97,7 @@ async def save_boot_notification_to_db(message):
 async def save_realtime_notification_to_db(message):
     # URL dell'API per salvare i dati nel database
     api_url = os.environ.get(
-        'API_URL', "https://emotion-test.eu/api") + "/wallbox/realtime/"
+        'API_URL', "https://emotion-projects.eu/api") + "/wallbox/realtime/"
     try:
         # Effettua la richiesta PATCH all'API
         # message_json = json.dumps(message, indent = 2)
