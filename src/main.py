@@ -62,7 +62,7 @@ async def server(websocket, path):
         message["password"] = client_passwords.get(serial, "Password non trovata")
         await save_boot_notification_to_db(message)
         connected_clients.pop(serial, None)
-        client_passwords.pop(serial, None)  # Ricorda di rimuovere anche la password
+        client_passwords.pop(serial, None)  # Rimuovere anche la password
 
 
 async def send_status(client_ip):
