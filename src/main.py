@@ -32,6 +32,8 @@ async def django(websocket, path):
 
     except websockets.exceptions.ConnectionClosedError:
         print(f"Connessione chiusa dal client {client_ip} sulla porta 15001")
+#salvo le password dei client
+client_passwords = {}
 
 
 async def server(websocket, path):
@@ -42,6 +44,7 @@ async def server(websocket, path):
             # Chiamata all'API per salvare i dati nel database
             if "ip_address" in message:
                 connected_clients[message["serial_number"]] = websocket
+                client_passwords[message["serial_number"]] = message.get('password')
                 print(f"Client mi ha inviato {message}.")
                 await save_boot_notification_to_db(message)
             else:
@@ -54,11 +57,12 @@ async def server(websocket, path):
         message = {}
         print(f"il serial  {serial} ")
         print(f"il client  {client} ")
-        message["serial_number"] = client[serial].get('serial_number')
+        message["serial_number"] = serial
         message["status"] = "OFFLINE"
-        message["password"] = client[serial].get('password')
+        message["password"] = client_passwords.get(serial, "Password non trovata")
         await save_boot_notification_to_db(message)
         connected_clients.pop(serial, None)
+        client_passwords.pop(serial, None)  # Ricorda di rimuovere anche la password
 
 
 async def send_status(client_ip):
