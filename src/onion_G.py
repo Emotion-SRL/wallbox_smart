@@ -140,7 +140,7 @@ async def client(websocket):
         else:
             print("Errore: status() ha restituito None o una stringa vuota")
         mcu_data_json = json.loads(mcu_data)
-        max_amps=int(float(mcu_data_json["Max_amps"]) * 100)
+        max_amps=int(float(mcu_data_json["Max_amps"]))
         ampere = int(float(mcu_data_json["IRMS_L1"]) * 100)
         print(f"ampere {ampere}")
         ev_state = mcu_data_json["State"]
@@ -155,8 +155,7 @@ async def client(websocket):
         id_data["ip_address"] = client_ip
         id_data["max_ampere"] = max_amps
         id_data["status"] = ev_state
-        identification = json.dumps(id_data, indent =2)        
-        await websocket.send(identification)
+        identification = json.dumps(id_data, indent =2)
         print(f"boot_notification: {identification}")
          # Avvia il task per l'invio dei dati in tempo reale
         asyncio.ensure_future(send_realtime_data(websocket, mac_address, serialNumber))
