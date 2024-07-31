@@ -25,6 +25,7 @@ async def django(websocket, path):
             connection = connected_clients.get(target_ip, False)
             if connection:
                 amps = message_data['max_ampere']
+                print(f"mi arriva questo set ampere {amps}")
                 print(f"Invio messaggio al client con IP {target_ip}")
                 await connection.send("set max amps " + str(amps))
             else:
@@ -56,7 +57,6 @@ async def server(websocket, path):
                 serial = serial_number
         message = {}
         print(f"il serial  {serial} ")
-        print(f"il client  {client} ")
         message["serial_number"] = serial
         message["status"] = "OFFLINE"
         message["password"] = client_passwords.get(serial, "Password non trovata")
