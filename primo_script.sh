@@ -131,3 +131,52 @@ CLEAN_MAC_ADDRESS=$(echo $MAC_ADDRESS | tr -d ':')
 echo "Il MAC address ripulito è: $CLEAN_MAC_ADDRESS"
 
 # fare una get all'api creata da filippo che restituisce il serial number!
+SERIAL_NUMBER=EM2024WALLSM74N1
+
+# Scrivere il serial number nel file wallbox_smart/serial_number.txt, cancellando eventuali scritte e spazi vuoti
+echo -n "$SERIAL_NUMBER" > /root/wallbox_smart/serial_number.txt
+
+# Verificare se il comando echo è stato eseguito correttamente
+if [ $? -eq 0 ]; then
+    echo "Serial number scritto con successo in wallbox_smart/serial_number.txt"
+else
+    echo "Errore durante la scrittura del serial number in wallbox_smart/serial_number.txt"
+fi
+
+
+# Creare lo script di avvio per onionG.py
+cat << 'EOF' > /root/wallbox_smart/src/start_onion.sh
+
+
+
+python3 /root/wallbox_smart/src/onion_G.py
+EOF
+
+# Rendere eseguibile lo script di avvio
+chmod +x /root/wallbox_smart/src/start_Onion.sh
+
+# Aggiungere lo script di avvio a /etc/rc.local
+if ! grep -q "/root/wallbox_smart/src/start_Onion.sh &" /etc/rc.local; then
+    sed -i '/exit 0/i /root/wallbox_smart/src/start_Onion.sh &' /etc/rc.local
+fi
+
+# Creare lo script per il reboot con git pull
+cat << 'EOF' > /root/wallbox_smart/src/reboot_with_git_pull.sh
+
+# URL del repository
+REPO_URL="https://$GITHUB_TOKEN@github.com/Emotion-SRL/wallbox_smart.git"
+# Navigare nella directory del repository
+cd /root/wallbox_smart
+# Eseguire git pull
+git pull $REPO_URL
+# Eseguire il reboot
+reboot
+EOF
+
+# Rendere eseguibile lo script di reboot
+chmod +x /root/wallbox_smart/src/reboot_with_git_pull.sh
+
+# Aggiungere i cron job per il reboot programmato
+(crontab -l ; echo "0 17 * * * /root/wallbox_smart/src/reboot_with_git_pull.sh") | crontab -
+(crontab -l ; echo "0 4 * * * /root/wallbox_smart/src/reboot_with_git_pull.sh") | crontab -
+
