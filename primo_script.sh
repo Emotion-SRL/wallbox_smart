@@ -48,7 +48,7 @@ CURRENT_VERSION=$(pip3 show setuptools | grep Version | awk '{print $2}')
 echo "Versione attuale di setuptools: $CURRENT_VERSION"
 
 # Ottieni l'ultima versione disponibile di setuptools da PyPI
-LATEST_VERSION=$(curl -s https://pypi.org/pypi/setuptools/json | jq -r .info.version)
+LATEST_VERSION=$(curl -s https://pypi.org/pypi/setuptools/json | grep -o '"version":"[^"]*"' | sed 's/"version":"\([^"]*\)"/\1/')
 echo "Ultima versione disponibile di setuptools: $LATEST_VERSION"
 
 # Confronta le versioni e aggiorna se necessario
@@ -66,6 +66,12 @@ if version_gt "$LATEST_VERSION" "$CURRENT_VERSION"; then
 else
     echo "setuptools è già aggiornato all'ultima versione."
 fi
+opkg update
+echo "Installazione di moduli Python..."
+pip3 install asyncio calendar datetime json os select socket subprocess sys time pytz pyserial websockets
+echo "Installazione moduli completata!"
+
+
 
 ### INSTALLARE GIT ###
 
@@ -144,8 +150,9 @@ opkg install curl
 curl --version
 
 # Leggi le credenziali dal file /root/credentials.txt
-USERNAME=$(sed -n '1p' /root/credentials.txt)
-PASSWORD=$(sed -n '2p' /root/credentials.txt)
+# Leggi le credenziali dal file /root/credentials.txt e rimuovi eventuali spazi o caratteri indesiderati
+USERNAME=$(sed -n '1p' /root/credentials.txt | tr -d '\r' | tr -d '\n')
+PASSWORD=$(sed -n '2p' /root/credentials.txt | tr -d '\r' | tr -d '\n')
 
 # Cancella il file /root/credentials.txt
 rm /root/credentials.txt
@@ -154,9 +161,9 @@ rm /root/credentials.txt
 echo "USERNAME: $USERNAME"
 echo "PASSWORD: $PASSWORD"
 
-
 # Definisci l'URL dell'API di login
 API_LOGIN="https://emotion-projects.eu/api/auth/login/"
+
 
 # Effettua la richiesta POST all'API di login per ottenere il token
 LOGIN_RESPONSE=$(curl -s -X POST "$API_LOGIN" \
@@ -178,6 +185,7 @@ else
 fi
 
 echo "Token di autenticazione recuperato con successo: $AUTH_TOKEN"
+
 
 # Effettua la richiesta POST all'API per ottenere il SERIAL_NUMBER
 RESPONSE=$(curl -s -X POST "https://emotion-projects.eu/api/wallbox/assign-serial/" \
@@ -312,3 +320,6 @@ if [ $? -eq 0 ]; then
 else
     echo "Errore durante l'aggiunta del cron job per il reboot alle 04:00"
 fi
+
+# da fare rebooting
+reboot -f
