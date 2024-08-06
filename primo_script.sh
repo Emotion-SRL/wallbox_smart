@@ -37,23 +37,34 @@ if [ $? -ne 0 ]; then
 fi
 
 
-### RISOLVERE L'ERRORE "NO SPACE LEFT ON DEVICE" ###
-# Creare una directory temporanea per pip
-echo "Creazione di una directory temporanea per pip..."
-mkdir -p /root/temp
-
-# Impostare la variabile di ambiente TMPDIR
-export TMPDIR=/root/temp
-
 ### RISOLVERE L'ERRORE DI SETUPTOOLS ###
-# Aggiornare setuptools
-echo "Aggiornamento di setuptools..."
-pip3 install --upgrade setuptools
+# Funzione per confrontare le versioni
+version_gt() {
+    [ "$(printf '%s\n' "$@" | sort -V | head -n 1)" != "$1" ]
+}
 
-# Verificare se l'aggiornamento è riuscito
-if [ $? -ne 0 ]; then
-    echo "Errore durante l'aggiornamento di setuptools."
-    exit 1
+# Ottieni la versione attuale di setuptools
+CURRENT_VERSION=$(pip3 show setuptools | grep Version | awk '{print $2}')
+echo "Versione attuale di setuptools: $CURRENT_VERSION"
+
+# Ottieni l'ultima versione disponibile di setuptools da PyPI
+LATEST_VERSION=$(curl -s https://pypi.org/pypi/setuptools/json | jq -r .info.version)
+echo "Ultima versione disponibile di setuptools: $LATEST_VERSION"
+
+# Confronta le versioni e aggiorna se necessario
+if version_gt "$LATEST_VERSION" "$CURRENT_VERSION"; then
+    echo "Aggiornamento di setuptools..."
+    pip3 install --upgrade setuptools
+
+    # Verificare se l'aggiornamento è riuscito
+    if [ $? -ne 0 ]; then
+        echo "Errore durante l'aggiornamento di setuptools."
+        exit 1
+    else
+        echo "Aggiornamento di setuptools completato con successo."
+    fi
+else
+    echo "setuptools è già aggiornato all'ultima versione."
 fi
 
 ### INSTALLARE GIT ###
@@ -90,13 +101,6 @@ fi
 # Navigare nella directory del progetto clonato
 cd $CLONE_DIR
 
-# Eseguire eventuali comandi di configurazione o avvio
-# Ad esempio, installare le dipendenze se c'è un file requirements.txt
-# if [ -f "requirements.txt" ]; then
-#     echo "Installando le dipendenze..."
-#     pip install -r requirements.txt
-# fi
-
 echo "Progetto clonato e configurato con successo."
 
 echo "Impostazione dei permessi per la cartella $CLONE_DIR..."
@@ -130,25 +134,45 @@ echo "Il MAC address dell'Onion Omega 2 è: $MAC_ADDRESS"
 CLEAN_MAC_ADDRESS=$(echo $MAC_ADDRESS | tr -d ':')
 echo "Il MAC address ripulito è: $CLEAN_MAC_ADDRESS"
 
-# Definisci le credenziali di login
-USERNAME="manager-admin_Spotlink"
-PASSWORD="AndreaGiacomoFilippoMax22!"
+# Aggiorna l'elenco dei pacchetti
+opkg update
+
+# Installa curl
+opkg install curl
+
+# Verifica l'installazione di curl
+curl --version
+
+# Leggi le credenziali dal file /root/credentials.txt
+USERNAME=$(sed -n '1p' /root/credentials.txt)
+PASSWORD=$(sed -n '2p' /root/credentials.txt)
+
+# Cancella il file /root/credentials.txt
+rm /root/credentials.txt
+
+# Stampa le credenziali per il debug (opzionale)
+echo "USERNAME: $USERNAME"
+echo "PASSWORD: $PASSWORD"
+
 
 # Definisci l'URL dell'API di login
-API_LOGIN="https://emotion-test.eu/api/auth/login/"
+API_LOGIN="https://emotion-projects.eu/api/auth/login/"
 
 # Effettua la richiesta POST all'API di login per ottenere il token
 LOGIN_RESPONSE=$(curl -s -X POST "$API_LOGIN" \
     -H "Content-Type: application/json" \
     -d "{\"username\": \"$USERNAME\", \"password\": \"$PASSWORD\"}")
+
 # Stampa la risposta per il debug
 echo "Risposta login: $LOGIN_RESPONSE"
 
-# Estrai il token dalla risposta JSON
-AUTH_TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.key')
+# Estrai il token di autenticazione dalla risposta JSON senza usare jq
+AUTH_TOKEN=$(echo "$LOGIN_RESPONSE" | grep -o '"key":"[^"]*"' | sed 's/"key":"\([^"]*\)"/\1/')
 
 # Verifica se il token è stato recuperato correttamente
-if [ -z "$AUTH_TOKEN" ]; then
+if [ -n "$AUTH_TOKEN" ]; then
+    echo "Token di autenticazione recuperato con successo: $AUTH_TOKEN"
+else
     echo "Errore durante il recupero del token di autenticazione"
     exit 1
 fi
@@ -156,7 +180,7 @@ fi
 echo "Token di autenticazione recuperato con successo: $AUTH_TOKEN"
 
 # Effettua la richiesta POST all'API per ottenere il SERIAL_NUMBER
-RESPONSE=$(curl -s -X POST "https://emotion-test.eu/api/wallbox/assign-serial/" \
+RESPONSE=$(curl -s -X POST "https://emotion-projects.eu/api/wallbox/assign-serial/" \
     -H "Authorization: Token $AUTH_TOKEN" \
     -H "Content-Type: application/json" \
     -d "{\"mac_address\": \"$CLEAN_MAC_ADDRESS\"}" \
@@ -174,8 +198,8 @@ echo "Corpo della risposta: $RESPONSE_BODY"
 
 # Verifica se la richiesta è stata eseguita con successo (codice di stato 200 o 201)
 if [ "$HTTP_STATUS_CODE" -eq 200 ] || [ "$HTTP_STATUS_CODE" -eq 201 ]; then
-    # Estrai il SERIAL_NUMBER dalla risposta JSON
-    SERIAL_NUMBER=$(echo "$RESPONSE_BODY" | jq -r '.serial_number')
+    # Estrai il SERIAL_NUMBER dalla risposta JSON senza usare jq
+    SERIAL_NUMBER=$(echo "$RESPONSE_BODY" | grep -o '"serial_number":"[^"]*"' | sed 's/"serial_number":"\([^"]*\)"/\1/')
 
     # Verifica se il SERIAL_NUMBER è stato recuperato correttamente
     if [ -n "$SERIAL_NUMBER" ]; then
@@ -244,9 +268,11 @@ fi
 
 # Creare lo script per il reboot con git pull
 cat << 'EOF' > /root/wallbox_smart/src/reboot_with_git_pull.sh
-#!/bin/sh
+
+
 # URL del repository
 REPO_URL="https://$GITHUB_TOKEN@github.com/Emotion-SRL/wallbox_smart.git"
+
 # Navigare nella directory del repository
 cd /root/wallbox_smart
 # Eseguire git pull
