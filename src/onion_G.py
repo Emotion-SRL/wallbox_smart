@@ -26,7 +26,7 @@ pollingInterval = 1 # seconds
 ser = serial.Serial('/dev/ttyS1', 9600, timeout=1)
 
 # Apro il file in modalità lettura
-with open("/root/serial_number.txt", "r") as file:
+with open("/root/wallbox_smart/serial_number.txt", "r") as file:
 # Leggo la prima riga del file
     serialNumber = file.readline()
 
