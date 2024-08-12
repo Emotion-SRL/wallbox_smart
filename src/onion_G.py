@@ -31,6 +31,19 @@ with open("/root/wallbox_smart/serial_number.txt", "r") as file:
     serialNumber = file.readline()
 
 
+# def get_mac_address(interface):
+#     try:
+#         # Esegui il comando ifconfig per ottenere le informazioni sull'interfaccia specificata
+#         output = subprocess.check_output(['ifconfig', interface]).decode('utf-8')
+#         # Cerca la riga che contiene il MAC address (HWaddr)
+#         mac_line = [line for line in output.split('\n') if 'HWaddr' in line][0]
+#         # Estrai il MAC address dalla riga
+#         mac_address = mac_line.split('HWaddr')[1].strip()
+#         print("mac_address" + mac_address)
+#         return mac_address
+#     except:
+#         return None
+
 def get_mac_address(interface):
     try:
         # Esegui il comando ifconfig per ottenere le informazioni sull'interfaccia specificata
@@ -39,12 +52,13 @@ def get_mac_address(interface):
         mac_line = [line for line in output.split('\n') if 'HWaddr' in line][0]
         # Estrai il MAC address dalla riga
         mac_address = mac_line.split('HWaddr')[1].strip()
-        print("mac_address" + mac_address)
-        return mac_address
-    except:
+        # Rimuovi i due punti dal MAC address
+        mac_address_clean = mac_address.replace(':', '')
+        print("MAC Address ripulito: " + mac_address_clean)
+        return mac_address_clean
+    except Exception as e:
+        print(f"Errore: {e}")
         return None
-
-
 
 
 def status():
@@ -109,7 +123,7 @@ def set_amp(number):
     ser.write(msg.encode())
     time.sleep(1)
 
-async def send_realtime_data(websocket, mac_address, serialNumber):
+async def send_realtime_data(websocket, mac_address_clean, serialNumber):
     while True:
         mcu_data = status()
         print(mcu_data)
@@ -118,7 +132,7 @@ async def send_realtime_data(websocket, mac_address, serialNumber):
         ev_state = mcu_data_json["State"]
         realtime_data = {
             "serial_number": serialNumber,
-            "password": mac_address,
+            "password": mac_address_clean,
             "ampere": ampere,
             "temperature": mcu_data_json["Temp"],
             "status": ev_state
@@ -146,19 +160,21 @@ async def client(websocket):
         ev_state = mcu_data_json["State"]
         # Ottieni l'indirizzo IP del client
         # client_ip = socket.gethostbyname(socket.gethostname())
-        client_ip = os.popen("ifconfig apcli0 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'").read().strip()
+        client_ip = "192.168.1.174"
+        # client_ip = os.popen("ifconfig apcli0 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'").read().strip()
         # Invia l'IP al server
-        mac_address = get_mac_address("ra0")
+        mac_address_clean = get_mac_address("ra0")
         id_data = {}
         id_data["serial_number"] = serialNumber
-        id_data["password"] = mac_address
+        id_data["password"] = mac_address_clean
         id_data["ip_address"] = client_ip
         id_data["max_ampere"] = max_amps
         id_data["status"] = ev_state
         identification = json.dumps(id_data, indent =2)
+        await websocket.send(identification)
         print(f"boot_notification: {identification}")
          # Avvia il task per l'invio dei dati in tempo reale
-        asyncio.ensure_future(send_realtime_data(websocket, mac_address, serialNumber))
+        asyncio.ensure_future(send_realtime_data(websocket, mac_address_clean, serialNumber))
 
         # Ricevi il messaggio dal server
         async for response in websocket:
@@ -179,7 +195,11 @@ async def client(websocket):
                 parts = response.split()
                 number = parts[-1]
                 set_amp(number)
-                await websocket.send(identification)
+                await asyncio.sleep(2)
+                mcu_data = json.loads(status()) #non gestito
+                id_data["max_ampere"] = int(float(mcu_data["Max_amps"]))
+                app_update = json.dumps(id_data, indent =2)
+                await websocket.send(app_update)
 
     except Exception as e:
         print(f"Errore durante la connessione al server: {e}")
