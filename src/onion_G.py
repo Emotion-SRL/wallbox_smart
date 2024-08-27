@@ -68,7 +68,6 @@ def status():
     while ser.in_waiting == 0:
         pass
     data = ser.readline().decode().strip()
-    print("porco dio il json che mi arriva è fatto così:  "+data)
     try:
         current_time = datetime.datetime.now(tz=desired_time_zone)
         str_date_time = current_time.strftime("%d-%m-%Y, %H:%M:%S")
