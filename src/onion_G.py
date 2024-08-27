@@ -128,6 +128,7 @@ async def send_realtime_data(websocket, mac_address_clean, serialNumber):
         mcu_data = status()
         print(mcu_data)
         mcu_data_json = json.loads(mcu_data)
+        max_amps=int(float(mcu_data_json["Max_amps"]))
         ampere = int(float(mcu_data_json["IRMS_L1"]) * 100)
         ev_state = mcu_data_json["State"]
         realtime_data = {
@@ -141,6 +142,16 @@ async def send_realtime_data(websocket, mac_address_clean, serialNumber):
         if ampere >= 600:
             await websocket.send(realtime_json)
             print(f"realtime_notification: {realtime_json}")
+        else:
+            client_ip = "192.168.1.174"
+            id_data = {}
+            id_data["serial_number"] = serialNumber
+            id_data["password"] = mac_address_clean
+            id_data["ip_address"] = client_ip
+            id_data["max_ampere"] = max_amps
+            id_data["status"] = ev_state
+            identification = json.dumps(id_data, indent =2)
+            await websocket.send(identification)
         await asyncio.sleep(58)
 
 
@@ -190,7 +201,7 @@ async def client(websocket):
                 await websocket.send("Wallbox stop")
             elif response == "status":
                 print("Status update...")
-                await websocket.send(status())
+                await websocket.send(status())  
             elif response.startswith("set max amp"):
                 parts = response.split()
                 number = parts[-1]
