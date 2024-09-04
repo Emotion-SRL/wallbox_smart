@@ -134,8 +134,20 @@ async def send_realtime_data(websocket, mac_address_clean, serialNumber):
             print(f"Errore durante l'invio dei dati in tempo reale: {e}")
             await asyncio.sleep(10)  # Attendi 10 secondi prima di riprovare
 
+async def send_ping(websocket):
+    while True:
+        try:
+            await websocket.ping()
+            await asyncio.sleep(30)  # Invia un ping ogni 30 secondi
+        except Exception as e:
+            print(f"Errore durante l'invio del ping: {e}")
+            break
+
 async def client(websocket):
     try:
+        # Avvia il task di ping
+        asyncio.ensure_future(send_ping(websocket))
+
         mcu_data = status()
         if mcu_data:
             mcu_data_json = json.loads(mcu_data)
@@ -191,8 +203,13 @@ async def client(websocket):
             await client(new_websocket)
 
 async def connect_to_server():
-    async with websockets.connect("wss://emotion-projects.eu/wallbox") as websocket:
-        await client(websocket)
+    while True:
+        try:
+            async with websockets.connect("wss://emotion-projects.eu/wallbox") as websocket:
+                await client(websocket)
+        except Exception as e:
+            print(f"Errore durante la connessione al server: {e}")
+            await asyncio.sleep(10)  # Attendi 10 secondi prima di riprovare
 
 loop = asyncio.get_event_loop()
 loop.run_until_complete(connect_to_server())
