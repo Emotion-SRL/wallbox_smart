@@ -221,18 +221,18 @@ async def connect_to_server():
         except websockets.ConnectionClosedError as e:
             print(f"Connessione chiusa in modo inaspettato durante la connessione: {e.code}, {e.reason}")
             # Esegui lo script reboot_with_git_pull.sh al momento lo testo senza riavviare!
-            subprocess.run(["/root/waallbox_smart/src/reboot_with_git_pull.sh"])
+            subprocess.run(["/root/wallbox_smart/src/reboot_with_git_pull.sh"])
             await asyncio.sleep(retry_delay)
             retry_delay = min(retry_delay * 2, 60)  # Aumenta il ritardo con backoff esponenziale
         except ConnectionResetError as e:
             print("ConnectionResetError durante la connessione: La connessione è stata resettata.")
             await asyncio.sleep(retry_delay)
-            subprocess.run(["/root/waallbox_smart/src/reboot_with_git_pull.sh"])
+            subprocess.run(["/root/wallbox_smart/src/reboot_with_git_pull.sh"])
             retry_delay = min(retry_delay * 2, 60)  # Aumenta il ritardo con backoff esponenziale
         except Exception as e:
             print(f"Errore durante la connessione al server: {e}")
             await asyncio.sleep(retry_delay)
-            subprocess.run(["/root/waallbox_smart/src/reboot_with_git_pull.sh"])
+            subprocess.run(["/root/wallbox_smart/src/reboot_with_git_pull.sh"])
             retry_delay = min(retry_delay * 2, 60)  # Aumenta il ritardo con backoff esponenziale
 
 loop = asyncio.get_event_loop()
