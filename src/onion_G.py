@@ -173,15 +173,14 @@ async def client(websocket):
         asyncio.ensure_future(send_realtime_data(websocket, mac_address_clean, serialNumber))
 
         async for response in websocket:
+            print(response)
             print(f"Ricevuto messaggio dal server: {response}")
             if response == "start":
                 start()
                 print("Wallbox start")
-                await websocket.send("Wallbox start")
             elif response == "stop":
                 stop()
                 print("Wallbox stop")
-                await websocket.send("Wallbox stop")
             elif response == "status":
                 print("Status update...")
                 await websocket.send(status())
@@ -206,6 +205,7 @@ async def client(websocket):
 
     except Exception as e:
         print(f"Errore durante la connessione al server: {e}")
+        start()
         await asyncio.sleep(10)  # Attendi prima di tentare di riconnettere
 
     print("Riprova a connetterti al server...")
